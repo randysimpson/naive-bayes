@@ -30,6 +30,7 @@ import (
 var count map[string]int
 
 var bicount map[string]map[string]int
+var tricount map[string]map[string]map[string]int
 
 //laplase smoothing
 var laplace_alpha float64
@@ -42,6 +43,7 @@ var bigramModel map[Key]float64
 func init() {
   count = map[string]int{}
   bicount = map[string]map[string]int{}
+  tricount = map[string]map[string]map[string]int{}
   laplace_alpha = 0.001
   
   bigramModel = map[Key]float64{}
@@ -56,20 +58,38 @@ func addBigram(first string, second string) {
   mm[second]++
 }
 
+func addTrigram(first string, second string, third string) {
+  mm, ok := tricount[first]
+  if !ok {
+    mm = map[string]map[string]int{}
+    tricount[first] = mm
+  }
+  m2, ok := tricount[first][second]
+  if !ok {
+    m2 = map[string]int{}
+    tricount[first][second] = m2
+  }
+  m2[third]++
+} 
+
 func AddData(data string) (int, error) {
   words := strings.Fields(data)
-	for i, word := range words {
+  for i, word := range words {
     count[word]++
     if i < len(words) - 1 {
       addBigram(word, words[i + 1])
     }
-	}
-  
-  //klog.Infof("count: %+v", count)
-  //klog.Infof("bicount: %+v", bicount)
-  
+    if i < len(words) - 2 {
+      addTrigram(word, words[i + 1], words[i + 2])
+    }
+  }
+
+  klog.Infof("count: %+v", count)
+  klog.Infof("bicount: %+v", bicount)
+  klog.Infof("tricount: %+v", tricount)
+
   buildModel()
-  
+
   return len(words), nil
 }
 
