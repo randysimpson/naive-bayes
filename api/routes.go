@@ -58,6 +58,12 @@ var routes = Routes{
         GetModel,
     },
     Route{
+        "PredictTri",
+        "GET",
+        "/api/v1/predict/{first}/{second}",
+        TriPredict,
+    },
+    Route{
         "Predict",
         "GET",
         "/api/v1/predict/{word}",

@@ -28,6 +28,7 @@ import (
 )
 
 var count map[string]int
+var tcount map[string]map[string]int
 
 var bicount map[string]map[string]int
 var tricount map[string]map[string]map[string]int
@@ -40,13 +41,21 @@ type Key struct {
 }
 var bigramModel map[Key]float64
 
+//trigram
+type TriKey struct {
+    first, second, third string
+}
+var trigramModel map[TriKey]float64
+
 func init() {
   count = map[string]int{}
+  tcount = map[string]map[string]int{}
   bicount = map[string]map[string]int{}
   tricount = map[string]map[string]map[string]int{}
   laplace_alpha = 0.001
   
   bigramModel = map[Key]float64{}
+  trigramModel = map[TriKey]float64{}
 }
 
 func addBigram(first string, second string) {
@@ -80,11 +89,18 @@ func AddData(data string) (int, error) {
       addBigram(word, words[i + 1])
     }
     if i < len(words) - 2 {
+      val, ok := tcount[word]
+      if !ok {
+        val = map[string]int{}
+        tcount[word] = val
+      }
+      tcount[word][words[i + 1]]++
       addTrigram(word, words[i + 1], words[i + 2])
     }
   }
 
   klog.Infof("count: %+v", count)
+  klog.Infof("tcount: %+v", tcount)
   klog.Infof("bicount: %+v", bicount)
   klog.Infof("tricount: %+v", tricount)
 
@@ -101,13 +117,26 @@ func GetNext(word string) (map[string]float32, error) {
   //find all bi-counts with words
   var probabilities map[string]float32
   probabilities = map[string]float32{}
-  
+
   total := float32(count[word])
-  
+
   for option, value := range bicount[word] {
     probabilities[option] = float32(value) / total
   }
-  
+
+  return probabilities, nil
+}
+
+func GetTriNext(first string, second string) (map[string]float32, error) {
+  var probabilities map[string]float32
+  probabilities = map[string]float32{}
+
+  total := float32(tcount[first][second])
+
+  for option, value := range tricount[first][second] {
+    probabilities[option] = float32(value) / total
+  }
+
   return probabilities, nil
 }
 
@@ -148,17 +177,26 @@ func getProbability(first string, second string) float64 {
 func buildModel() {
   //use log base of 250
   logBase := 1 / math.Log(250)
-  
+
   v := float64(len(count)) + laplace_alpha
-  
+
   for key, value := range count {
     denom := float64(value) + v
     for key2, val2 := range bicount[key] {
       bigramModel[Key{key, key2}] = (float64(val2) + laplace_alpha) / denom
+
+      //trigram
+      for key3, val3 := range tricount[key][key2] {
+        trigramModel[TriKey{key, key2, key3}] = (float64(val3) + laplace_alpha) / denom
+      }
+      //unknown token
+      trigramModel[TriKey{key, key2, "<UKN>"}] = math.Log(laplace_alpha / denom) * logBase
     }
     //add unknown token
     bigramModel[Key{key, "<UKN>"}] = math.Log(laplace_alpha / denom) * logBase
+    trigramModel[TriKey{key, "<UKN>", "<UKN>"}] = math.Log(laplace_alpha / denom) * logBase
   } 
   //handle unknown as first word. 
   bigramModel[Key{"<UKN>", "<UKN>"}] = math.Log(laplace_alpha / (v + laplace_alpha)) * logBase
+  trigramModel[TriKey{"<UKN>", "<UKN>", "<UKN>"}] = math.Log(laplace_alpha / (v + laplace_alpha)) * logBase
 }

@@ -136,3 +136,24 @@ func Predict(w http.ResponseWriter, r *http.Request) {
     klog.Errorln(err)
   }
 }
+
+func TriPredict(w http.ResponseWriter, r *http.Request) {
+  vars := mux.Vars(r)
+  first := vars["first"]
+  second := vars["second"]
+  options, err := model.GetTriNext(first, second)
+  if err != nil {
+    klog.Errorf("error: %+v", err)
+  }
+
+  w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+  w.WriteHeader(http.StatusOK)
+
+  enc := json.NewEncoder(w)
+  enc.SetEscapeHTML(false)
+  //if err := json.NewEncoder(w).Encode(options); err != nil {
+  if err := enc.Encode(options); err != nil {
+    klog.Errorln(err)
+  }
+}
+
