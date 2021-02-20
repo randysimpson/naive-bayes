@@ -153,7 +153,7 @@ func GetTriNext(first string, second string) (map[string]float32, error) {
   var probabilities map[string]float32
   probabilities = map[string]float32{}
 
-  total := float32(bicount[first][second])
+  total := float32(bicount[first][second] - 1)
 
   for option, value := range tricount[first][second] {
     probabilities[option] = float32(value) / total
@@ -166,7 +166,7 @@ func GetQuadNext(first string, second string, third string) (map[string]float32,
   var probabilities map[string]float32
   probabilities = map[string]float32{}
 
-  total := float32(tricount[first][second][third])
+  total := float32(tricount[first][second][third] - 1)
 
   for option, value := range quadcount[first][second][third] {
     probabilities[option] = float32(value) / total
