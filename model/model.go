@@ -221,20 +221,18 @@ func buildModel() {
       bigramModel[Key{key, key2}] = (float64(val2) + laplace_alpha) / denom
 
       //trigram
-      tridenom := float64(val2) + float64(len(bicount)) + laplace_alpha
       for key3, val3 := range tricount[key][key2] {
-        trigramModel[TriKey{key, key2, key3}] = (float64(val3) + laplace_alpha) / tridenom
+        trigramModel[TriKey{key, key2, key3}] = (float64(val3) + laplace_alpha) / denom
 
         //quadgram
-        quaddenom := float64(val3) + float64(len(tricount)) + laplace_alpha
         for key4, val4 := range quadcount[key][key2][key3] {
-          quadgramModel[QuadKey{key, key2, key3, key4}] = (float64(val4) + laplace_alpha) / quaddenom
+          quadgramModel[QuadKey{key, key2, key3, key4}] = (float64(val4) + laplace_alpha) / denom
         }
         //unknown token
-        quadgramModel[QuadKey{key, key2, key3, "<UKN>"}] = math.Log(laplace_alpha / quaddenom) * logBase
+        quadgramModel[QuadKey{key, key2, key3, "<UKN>"}] = math.Log(laplace_alpha / denom) * logBase
       }
       //unknown token
-      trigramModel[TriKey{key, key2, "<UKN>"}] = math.Log(laplace_alpha / tridenom) * logBase
+      trigramModel[TriKey{key, key2, "<UKN>"}] = math.Log(laplace_alpha / denom) * logBase
     }
     //add unknown token
     bigramModel[Key{key, "<UKN>"}] = math.Log(laplace_alpha / denom) * logBase
