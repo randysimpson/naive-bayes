@@ -80,5 +80,5 @@ var routes = Routes{
         "POST",
         "/api/v1/clear",
         Clear,
-    }
+    },
 }
