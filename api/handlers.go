@@ -131,7 +131,6 @@ func Predict(w http.ResponseWriter, r *http.Request) {
   
   enc := json.NewEncoder(w)
   enc.SetEscapeHTML(false)
-  //if err := json.NewEncoder(w).Encode(options); err != nil {
   if err := enc.Encode(options); err != nil {
     klog.Errorln(err)
   }
@@ -151,9 +150,41 @@ func TriPredict(w http.ResponseWriter, r *http.Request) {
 
   enc := json.NewEncoder(w)
   enc.SetEscapeHTML(false)
-  //if err := json.NewEncoder(w).Encode(options); err != nil {
   if err := enc.Encode(options); err != nil {
     klog.Errorln(err)
   }
 }
 
+func QuadPredict(w http.ResponseWriter, r *http.Request) {
+  vars := mux.Vars(r)
+  first := vars["first"]
+  second := vars["second"]
+  third := vars["third"]
+  options, err := model.GetQuadNext(first, second, third)
+  if err != nil {
+    klog.Errorf("error: %+v", err)
+  }
+
+  w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+  w.WriteHeader(http.StatusOK)
+
+  enc := json.NewEncoder(w)
+  enc.SetEscapeHTML(false)
+  if err := enc.Encode(options); err != nil {
+    klog.Errorln(err)
+  }
+}
+
+func Clear(w http.ResponseWriter, r *http.Request) {
+  model.ClearModel()
+
+  w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+  w.WriteHeader(http.StatusOK)
+
+  t := map[string]interface{}{
+    "status": "clear",
+  }
+  if err := json.NewEncoder(w).Encode(t); err != nil {
+    klog.Errorln(err)
+  }
+}

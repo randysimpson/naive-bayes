@@ -28,10 +28,9 @@ import (
 )
 
 var count map[string]int
-var tcount map[string]map[string]int
-
 var bicount map[string]map[string]int
 var tricount map[string]map[string]map[string]int
+var quadcount map[string]map[string]map[string]map[string]int
 
 //laplase smoothing
 var laplace_alpha float64
@@ -47,15 +46,26 @@ type TriKey struct {
 }
 var trigramModel map[TriKey]float64
 
+//quadgram
+type QuadKey struct {
+  first, second, third, fourth string
+}
+var quadgramModel map[QuadKey]float64
+
 func init() {
+  ClearModel()
+}
+
+func ClearModel() {
   count = map[string]int{}
-  tcount = map[string]map[string]int{}
   bicount = map[string]map[string]int{}
   tricount = map[string]map[string]map[string]int{}
+  quadcount = map[string]map[string]map[string]map[string]int{}
   laplace_alpha = 0.001
   
   bigramModel = map[Key]float64{}
   trigramModel = map[TriKey]float64{}
+  quadgramModel = map[QuadKey]float64{}
 }
 
 func addBigram(first string, second string) {
@@ -81,6 +91,25 @@ func addTrigram(first string, second string, third string) {
   m2[third]++
 } 
 
+func addQuadgram(first string, second string, third string, fourth string) {
+  mm, ok := quadcount[first]
+  if !ok {
+    mm = map[string]map[string]map[string]int{}
+    quadcount[first] = mm
+  }
+  m2, ok := quadcount[first][second]
+  if !ok {
+    m2 = map[string]map[string]int{}
+    quadcount[first][second] = m2
+  }
+  m3, ok := quadcount[first][second][third]
+  if !ok {
+    m3 = map[string]int{}
+    quadcount[first][second][third] = m3
+  }
+  m3[fourth]++
+}
+
 func AddData(data string) (int, error) {
   words := strings.Fields(data)
   for i, word := range words {
@@ -89,20 +118,17 @@ func AddData(data string) (int, error) {
       addBigram(word, words[i + 1])
     }
     if i < len(words) - 2 {
-      val, ok := tcount[word]
-      if !ok {
-        val = map[string]int{}
-        tcount[word] = val
-      }
-      tcount[word][words[i + 1]]++
       addTrigram(word, words[i + 1], words[i + 2])
+    }
+    if i < len(words) - 3 {
+      addQuadgram(word, words[i + 1], words[i + 2], words[i + 3])
     }
   }
 
   klog.Infof("count: %+v", count)
-  klog.Infof("tcount: %+v", tcount)
   klog.Infof("bicount: %+v", bicount)
   klog.Infof("tricount: %+v", tricount)
+  klog.Infof("quadcount: %+v", quadcount)
 
   buildModel()
 
@@ -131,10 +157,33 @@ func GetTriNext(first string, second string) (map[string]float32, error) {
   var probabilities map[string]float32
   probabilities = map[string]float32{}
 
-  total := float32(tcount[first][second])
+  total := 0.0
 
   for option, value := range tricount[first][second] {
-    probabilities[option] = float32(value) / total
+    total += float64(value)
+    probabilities[option] = float32(value)
+  }
+
+  for option, value := range probabilities {
+    probabilities[option] = float32(value) / float32(total)
+  }
+
+  return probabilities, nil
+}
+
+func GetQuadNext(first string, second string, third string) (map[string]float32, error) {
+  var probabilities map[string]float32
+  probabilities = map[string]float32{}
+
+  total := 0.0
+
+  for option, value := range quadcount[first][second][third] {
+    total += float64(value)
+    probabilities[option] = float32(value)
+  }
+
+  for option, value := range probabilities {
+    probabilities[option] = float32(value) / float32(total)
   }
 
   return probabilities, nil
@@ -188,6 +237,13 @@ func buildModel() {
       //trigram
       for key3, val3 := range tricount[key][key2] {
         trigramModel[TriKey{key, key2, key3}] = (float64(val3) + laplace_alpha) / denom
+
+        //quadgram
+        for key4, val4 := range quadcount[key][key2][key3] {
+          quadgramModel[QuadKey{key, key2, key3, key4}] = (float64(val4) + laplace_alpha) / denom
+        }
+        //unknown token
+        quadgramModel[QuadKey{key, key2, key3, "<UKN>"}] = math.Log(laplace_alpha / denom) * logBase
       }
       //unknown token
       trigramModel[TriKey{key, key2, "<UKN>"}] = math.Log(laplace_alpha / denom) * logBase
