@@ -79,6 +79,6 @@ var routes = Routes{
         "Clear",
         "POST",
         "/api/v1/clear",
-        Clear
-    }
+        Clear,
+    },
 }
