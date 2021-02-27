@@ -131,7 +131,6 @@ func Predict(w http.ResponseWriter, r *http.Request) {
   
   enc := json.NewEncoder(w)
   enc.SetEscapeHTML(false)
-  //if err := json.NewEncoder(w).Encode(options); err != nil {
   if err := enc.Encode(options); err != nil {
     klog.Errorln(err)
   }
@@ -151,7 +150,6 @@ func TriPredict(w http.ResponseWriter, r *http.Request) {
 
   enc := json.NewEncoder(w)
   enc.SetEscapeHTML(false)
-  //if err := json.NewEncoder(w).Encode(options); err != nil {
   if err := enc.Encode(options); err != nil {
     klog.Errorln(err)
   }
@@ -172,8 +170,21 @@ func QuadPredict(w http.ResponseWriter, r *http.Request) {
 
   enc := json.NewEncoder(w)
   enc.SetEscapeHTML(false)
-  //if err := json.NewEncoder(w).Encode(options); err != nil {
   if err := enc.Encode(options); err != nil {
+    klog.Errorln(err)
+  }
+}
+
+func Clear(w http.ResponseWriter, r *http.Request) {
+  model.ClearModel()
+
+  w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+  w.WriteHeader(http.StatusOK)
+
+  t := map[string]interface{}{
+    "status": "clear",
+  }
+  if err := json.NewEncoder(w).Encode(t); err != nil {
     klog.Errorln(err)
   }
 }

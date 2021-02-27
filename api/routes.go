@@ -75,4 +75,10 @@ var routes = Routes{
         "/api/v1/predict/{word}",
         Predict,
     },
+    Route{
+        "Clear",
+        "POST",
+        "/api/v1/clear",
+        Clear
+    }
 }

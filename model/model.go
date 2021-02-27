@@ -53,6 +53,10 @@ type QuadKey struct {
 var quadgramModel map[QuadKey]float64
 
 func init() {
+  ClearModel()
+}
+
+func ClearModel() {
   count = map[string]int{}
   bicount = map[string]map[string]int{}
   tricount = map[string]map[string]map[string]int{}
