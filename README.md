@@ -7,7 +7,7 @@ This application was created to use the Naive-Bayes algorithm for analyzing text
 To run the container issue:
 
 ```
-docker run -d -p 8080:8080 randysimpson/naive-bayes:v1.0
+docker run -d -p 8080:8080 randysimpson/naive-bayes:latest
 ```
 
 ## Build Model
@@ -49,7 +49,7 @@ curl -i -H "Accept: application/json" -H "Content-Type: application/json" -d @ou
 
 ## Predict
 
-To get the probabilities of the next word of `is` we use:
+To get the probabilities of the next word after `a` we use:
 
 ```sh
 curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X GET http://localhost:8080/api/v1/predict/a
@@ -97,7 +97,7 @@ This is a microservice which has been written based on REST-API to allow for dep
 To build this container using docker issue:
 
 ```
-docker build -t randysimpson/naive-bayes:v1.0 .
+docker build -t randysimpson/naive-bayes:v1.1 .
 ```
 
 ### Manual Build
