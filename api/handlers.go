@@ -63,7 +63,7 @@ func BuildModel(w http.ResponseWriter, r *http.Request) {
   
   t := map[string]interface{}{
     "status": "Success",
-    "size":  fmt.Sprintf("%d", count),
+    "size":  count,
   }
   if err := json.NewEncoder(w).Encode(t); err != nil {
     klog.Errorln(err)
@@ -97,7 +97,7 @@ func TestEntropy(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusOK)
   
   t := map[string]interface{}{
-    "entropy": fmt.Sprintf("%f", entropy),
+    "entropy": entropy,
   }
   if err := json.NewEncoder(w).Encode(t); err != nil {
     klog.Errorln(err)
@@ -111,7 +111,7 @@ func GetModel(w http.ResponseWriter, r *http.Request) {
   w.WriteHeader(http.StatusOK)
   
   t := map[string]interface{}{
-    "count": fmt.Sprintf("%d", count),
+    "count": count,
   }
   if err := json.NewEncoder(w).Encode(t); err != nil {
     klog.Errorln(err)
