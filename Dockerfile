@@ -3,8 +3,6 @@ WORKDIR /usr/local/go/src
 RUN mkdir naive-bayes
 WORKDIR /usr/local/go/src/naive-bayes
 ADD . .
-#RUN go get github.com/gorilla/mux
-#RUN go get k8s.io/klog
 RUN go mod tidy
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o main .
 FROM scratch
