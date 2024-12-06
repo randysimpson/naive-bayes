@@ -1,6 +1,7 @@
-/*MIT License
+/*
+MIT License
 
-Copyright (©) 2019 - Randall Simpson
+# Copyright (©) 2024 - Randall Simpson
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -18,173 +19,196 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.*/
+SOFTWARE.
+*/
 package api
- 
+
 import (
-    "encoding/json"
-    "fmt"
-    "net/http"
-    "naive-bayes/model"
-    "io/ioutil"
-    "io"
-    "k8s.io/klog"
-    "github.com/gorilla/mux"
+	"encoding/json"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"strings"
+
+	"github.com/randysimpson/naive-bayes/model"
+
+	"github.com/gorilla/mux"
+	"k8s.io/klog"
 )
- 
+
 func Index(w http.ResponseWriter, r *http.Request) {
-  fmt.Fprintln(w, "Welcome!")
+	fmt.Fprintln(w, "Welcome!")
 }
- 
+
 func BuildModel(w http.ResponseWriter, r *http.Request) {
-  body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
-  if err != nil {
-    klog.Errorf("error: %+v", err)
-  }
-  
-  if err := r.Body.Close(); err != nil {
-    klog.Errorln(err)
-  }
-  
-  //convert json into map
-  var jsonBody interface{}
-  json.Unmarshal(body, &jsonBody)
-  
-  m := jsonBody.(map[string]interface{})
+	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
+	if err != nil {
+		klog.Errorf("error: %+v", err)
+	}
 
-  s := m["data"].(string)
-  count, err := model.AddData(s)
-  if err != nil {
-    klog.Errorf("error: %+v", err)
-  }
+	if err := r.Body.Close(); err != nil {
+		klog.Errorln(err)
+	}
 
-  w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-  w.WriteHeader(http.StatusCreated)
-  
-  t := map[string]interface{}{
-    "status": "Success",
-    "size":  count,
-  }
-  if err := json.NewEncoder(w).Encode(t); err != nil {
-    klog.Errorln(err)
-  }
+	//convert json into map
+	var jsonBody interface{}
+	json.Unmarshal(body, &jsonBody)
+
+	m := jsonBody.(map[string]interface{})
+
+	totalCount := 0
+	s := m["data"].(string)
+	if len(s) > 0 {
+		count, err := model.AddData(strings.Fields(s))
+		if err != nil {
+			klog.Errorf("error: %+v", err)
+		}
+		totalCount += count
+	}
+	tokens := m["tokens"].([]string)
+	if len(tokens) > 0 {
+		count, err := model.AddData(tokens)
+		if err != nil {
+			klog.Errorf("error: %+v", err)
+		}
+		totalCount += count
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusCreated)
+
+	t := map[string]interface{}{
+		"status": "Success",
+		"size":   totalCount,
+	}
+	if err := json.NewEncoder(w).Encode(t); err != nil {
+		klog.Errorln(err)
+	}
 }
 
 func TestEntropy(w http.ResponseWriter, r *http.Request) {
-  body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
-  if err != nil {
-    klog.Errorf("error: %+v", err)
-  }
-  
-  if err := r.Body.Close(); err != nil {
-    klog.Errorln(err)
-  }
-  
-  //convert json into map
-  var jsonBody interface{}
-  json.Unmarshal(body, &jsonBody)
-  
-  m := jsonBody.(map[string]interface{})
+	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
+	if err != nil {
+		klog.Errorf("error: %+v", err)
+	}
 
-  s := m["data"].(string)
-  
-  entropy, err := model.GetEntropy(s)
-  if err != nil {
-    klog.Errorf("error: %+v", err)
-  }
+	if err := r.Body.Close(); err != nil {
+		klog.Errorln(err)
+	}
 
-  w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-  w.WriteHeader(http.StatusOK)
-  
-  t := map[string]interface{}{
-    "entropy": entropy,
-  }
-  if err := json.NewEncoder(w).Encode(t); err != nil {
-    klog.Errorln(err)
-  }  
+	//convert json into map
+	var jsonBody interface{}
+	json.Unmarshal(body, &jsonBody)
+
+	m := jsonBody.(map[string]interface{})
+
+	entropy := 0.0
+	s := m["data"].(string)
+	if len(s) > 0 {
+		e, err := model.GetEntropy(strings.Fields(s))
+		if err != nil {
+			klog.Errorf("error: %+v", err)
+		}
+		entropy = e
+	}
+	tokens := m["tokens"].([]string)
+	if len(tokens) > 0 {
+		e, err := model.GetEntropy(tokens)
+		if err != nil {
+			klog.Errorf("error: %+v", err)
+		}
+		entropy = e
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+
+	t := map[string]interface{}{
+		"entropy": entropy,
+	}
+	if err := json.NewEncoder(w).Encode(t); err != nil {
+		klog.Errorln(err)
+	}
 }
 
 func GetModel(w http.ResponseWriter, r *http.Request) {
-  count := model.GetCount()
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
 
-  w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-  w.WriteHeader(http.StatusOK)
-  
-  t := map[string]interface{}{
-    "count": count,
-  }
-  if err := json.NewEncoder(w).Encode(t); err != nil {
-    klog.Errorln(err)
-  }
+	t := model.GetModel()
+	if err := json.NewEncoder(w).Encode(t); err != nil {
+		klog.Errorln(err)
+	}
 }
 
 func Predict(w http.ResponseWriter, r *http.Request) {
-  vars := mux.Vars(r)
-  word := vars["word"]
-  options, err := model.GetNext(word)
-  if err != nil {
-    klog.Errorf("error: %+v", err)
-  }
+	vars := mux.Vars(r)
+	word := vars["word"]
+	options, err := model.GetNext(word)
+	if err != nil {
+		klog.Errorf("error: %+v", err)
+	}
 
-  w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-  w.WriteHeader(http.StatusOK)
-  
-  enc := json.NewEncoder(w)
-  enc.SetEscapeHTML(false)
-  if err := enc.Encode(options); err != nil {
-    klog.Errorln(err)
-  }
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+
+	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(options); err != nil {
+		klog.Errorln(err)
+	}
 }
 
 func TriPredict(w http.ResponseWriter, r *http.Request) {
-  vars := mux.Vars(r)
-  first := vars["first"]
-  second := vars["second"]
-  options, err := model.GetTriNext(first, second)
-  if err != nil {
-    klog.Errorf("error: %+v", err)
-  }
+	vars := mux.Vars(r)
+	first := vars["first"]
+	second := vars["second"]
+	options, err := model.GetTriNext(first, second)
+	if err != nil {
+		klog.Errorf("error: %+v", err)
+	}
 
-  w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-  w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
 
-  enc := json.NewEncoder(w)
-  enc.SetEscapeHTML(false)
-  if err := enc.Encode(options); err != nil {
-    klog.Errorln(err)
-  }
+	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(options); err != nil {
+		klog.Errorln(err)
+	}
 }
 
 func QuadPredict(w http.ResponseWriter, r *http.Request) {
-  vars := mux.Vars(r)
-  first := vars["first"]
-  second := vars["second"]
-  third := vars["third"]
-  options, err := model.GetQuadNext(first, second, third)
-  if err != nil {
-    klog.Errorf("error: %+v", err)
-  }
+	vars := mux.Vars(r)
+	first := vars["first"]
+	second := vars["second"]
+	third := vars["third"]
+	options, err := model.GetQuadNext(first, second, third)
+	if err != nil {
+		klog.Errorf("error: %+v", err)
+	}
 
-  w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-  w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
 
-  enc := json.NewEncoder(w)
-  enc.SetEscapeHTML(false)
-  if err := enc.Encode(options); err != nil {
-    klog.Errorln(err)
-  }
+	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(options); err != nil {
+		klog.Errorln(err)
+	}
 }
 
 func Clear(w http.ResponseWriter, r *http.Request) {
-  model.ClearModel()
+	model.ClearModel()
 
-  w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-  w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
 
-  t := map[string]interface{}{
-    "status": "clear",
-  }
-  if err := json.NewEncoder(w).Encode(t); err != nil {
-    klog.Errorln(err)
-  }
+	t := map[string]interface{}{
+		"status": "clear",
+	}
+	if err := json.NewEncoder(w).Encode(t); err != nil {
+		klog.Errorln(err)
+	}
 }

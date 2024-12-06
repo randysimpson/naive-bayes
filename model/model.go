@@ -1,6 +1,7 @@
-/*MIT License
+/*
+MIT License
 
-Copyright (©) 2019 - Randall Simpson
+# Copyright (©) 2024 - Randall Simpson
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -18,13 +19,14 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.*/
+SOFTWARE.
+*/
 package model
 
 import (
-  "strings"
-  "math"
-  "k8s.io/klog"
+	"math"
+
+	"k8s.io/klog"
 )
 
 var count map[string]int
@@ -32,227 +34,252 @@ var bicount map[string]map[string]int
 var tricount map[string]map[string]map[string]int
 var quadcount map[string]map[string]map[string]map[string]int
 
-//laplase smoothing
+// laplase smoothing
 var laplace_alpha float64
 
 type Key struct {
-    first, second string
+	first, second string
 }
+
 var bigramModel map[Key]float64
 
-//trigram
+// trigram
 type TriKey struct {
-    first, second, third string
+	first, second, third string
 }
+
 var trigramModel map[TriKey]float64
 
-//quadgram
+// quadgram
 type QuadKey struct {
-  first, second, third, fourth string
+	first, second, third, fourth string
 }
+
 var quadgramModel map[QuadKey]float64
 
 func init() {
-  ClearModel()
+	ClearModel()
 }
 
 func ClearModel() {
-  count = map[string]int{}
-  bicount = map[string]map[string]int{}
-  tricount = map[string]map[string]map[string]int{}
-  quadcount = map[string]map[string]map[string]map[string]int{}
-  laplace_alpha = 0.001
-  
-  bigramModel = map[Key]float64{}
-  trigramModel = map[TriKey]float64{}
-  quadgramModel = map[QuadKey]float64{}
+	count = map[string]int{}
+	bicount = map[string]map[string]int{}
+	tricount = map[string]map[string]map[string]int{}
+	quadcount = map[string]map[string]map[string]map[string]int{}
+	laplace_alpha = 0.001
+
+	bigramModel = map[Key]float64{}
+	trigramModel = map[TriKey]float64{}
+	quadgramModel = map[QuadKey]float64{}
+}
+
+type CountModel struct {
+	Count     map[string]int                                  `json:"count"`
+	BiCount   map[string]map[string]int                       `json:"biCount"`
+	TriCount  map[string]map[string]map[string]int            `json:"triCount"`
+	QuadCount map[string]map[string]map[string]map[string]int `json:"quadCount"`
+}
+
+type KeyModels struct {
+	BiModel   map[Key]float64     `json:"biModel"`
+	TriModel  map[TriKey]float64  `json:"triModel"`
+	QuadModel map[QuadKey]float64 `json:"quadModel"`
+}
+
+type RtnModel struct {
+	CountModels CountModel `json:"countModels"`
+	KeyModels   KeyModels  `json:"keyModels"`
+}
+
+func GetModel() RtnModel {
+	return RtnModel{
+		CountModels: CountModel{
+			Count:     count,
+			BiCount:   bicount,
+			TriCount:  tricount,
+			QuadCount: quadcount,
+		},
+		KeyModels: KeyModels{
+			BiModel:   bigramModel,
+			TriModel:  trigramModel,
+			QuadModel: quadgramModel,
+		},
+	}
 }
 
 func addBigram(first string, second string) {
-  mm, ok := bicount[first]
-  if !ok {
-    mm = map[string]int{}
-    bicount[first] = mm
-  }
-  mm[second]++
+	mm, ok := bicount[first]
+	if !ok {
+		mm = map[string]int{}
+		bicount[first] = mm
+	}
+	mm[second]++
 }
 
 func addTrigram(first string, second string, third string) {
-  mm, ok := tricount[first]
-  if !ok {
-    mm = map[string]map[string]int{}
-    tricount[first] = mm
-  }
-  m2, ok := tricount[first][second]
-  if !ok {
-    m2 = map[string]int{}
-    tricount[first][second] = m2
-  }
-  m2[third]++
-} 
-
-func addQuadgram(first string, second string, third string, fourth string) {
-  mm, ok := quadcount[first]
-  if !ok {
-    mm = map[string]map[string]map[string]int{}
-    quadcount[first] = mm
-  }
-  m2, ok := quadcount[first][second]
-  if !ok {
-    m2 = map[string]map[string]int{}
-    quadcount[first][second] = m2
-  }
-  m3, ok := quadcount[first][second][third]
-  if !ok {
-    m3 = map[string]int{}
-    quadcount[first][second][third] = m3
-  }
-  m3[fourth]++
+	_, ok := tricount[first]
+	if !ok {
+		tricount[first] = map[string]map[string]int{}
+	}
+	m2, ok := tricount[first][second]
+	if !ok {
+		m2 = map[string]int{}
+		tricount[first][second] = m2
+	}
+	m2[third]++
 }
 
-func AddData(data string) (int, error) {
-  words := strings.Fields(data)
-  for i, word := range words {
-    count[word]++
-    if i < len(words) - 1 {
-      addBigram(word, words[i + 1])
-    }
-    if i < len(words) - 2 {
-      addTrigram(word, words[i + 1], words[i + 2])
-    }
-    if i < len(words) - 3 {
-      addQuadgram(word, words[i + 1], words[i + 2], words[i + 3])
-    }
-  }
+func addQuadgram(first string, second string, third string, fourth string) {
+	_, ok := quadcount[first]
+	if !ok {
+		quadcount[first] = map[string]map[string]map[string]int{}
+	}
+	_, ok = quadcount[first][second]
+	if !ok {
+		quadcount[first][second] = map[string]map[string]int{}
+	}
+	m3, ok := quadcount[first][second][third]
+	if !ok {
+		m3 = map[string]int{}
+		quadcount[first][second][third] = m3
+	}
+	m3[fourth]++
+}
 
-  klog.Infof("count: %+v", count)
-  klog.Infof("bicount: %+v", bicount)
-  klog.Infof("tricount: %+v", tricount)
-  klog.Infof("quadcount: %+v", quadcount)
+func AddData(data []string) (int, error) {
+	for i, word := range data {
+		count[word]++
+		if i < len(data)-1 {
+			addBigram(word, data[i+1])
+		}
+		if i < len(data)-2 {
+			addTrigram(word, data[i+1], data[i+2])
+		}
+		if i < len(data)-3 {
+			addQuadgram(word, data[i+1], data[i+2], data[i+3])
+		}
+	}
 
-  buildModel()
+	klog.Infof("count: %+v", count)
+	klog.Infof("bicount: %+v", bicount)
+	klog.Infof("tricount: %+v", tricount)
+	klog.Infof("quadcount: %+v", quadcount)
 
-  return len(words), nil
+	buildModel()
+
+	return len(data), nil
 }
 
 func GetCount() int {
-  return len(count)
+	return len(count)
 }
 
 func GetNext(word string) (map[string]float32, error) {
-  //find all bi-counts with words
-  var probabilities map[string]float32
-  probabilities = map[string]float32{}
+	//find all bi-counts with words
+	probabilities := map[string]float32{}
 
-  total := float32(count[word])
+	total := float32(count[word])
 
-  for option, value := range bicount[word] {
-    probabilities[option] = float32(value) / total
-  }
+	for option, value := range bicount[word] {
+		probabilities[option] = float32(value) / total
+	}
 
-  return probabilities, nil
+	return probabilities, nil
 }
 
 func GetTriNext(first string, second string) (map[string]float32, error) {
-  var probabilities map[string]float32
-  probabilities = map[string]float32{}
+	probabilities := map[string]float32{}
 
-  total := 0.0
+	total := 0.0
 
-  for option, value := range tricount[first][second] {
-    total += float64(value)
-    probabilities[option] = float32(value)
-  }
+	for option, value := range tricount[first][second] {
+		total += float64(value)
+		probabilities[option] = float32(value)
+	}
 
-  for option, value := range probabilities {
-    probabilities[option] = float32(value) / float32(total)
-  }
+	for option, value := range probabilities {
+		probabilities[option] = float32(value) / float32(total)
+	}
 
-  return probabilities, nil
+	return probabilities, nil
 }
 
 func GetQuadNext(first string, second string, third string) (map[string]float32, error) {
-  var probabilities map[string]float32
-  probabilities = map[string]float32{}
+	probabilities := map[string]float32{}
 
-  total := 0.0
+	total := 0.0
 
-  for option, value := range quadcount[first][second][third] {
-    total += float64(value)
-    probabilities[option] = float32(value)
-  }
+	for option, value := range quadcount[first][second][third] {
+		total += float64(value)
+		probabilities[option] = float32(value)
+	}
 
-  for option, value := range probabilities {
-    probabilities[option] = float32(value) / float32(total)
-  }
+	for option, value := range probabilities {
+		probabilities[option] = float32(value) / float32(total)
+	}
 
-  return probabilities, nil
+	return probabilities, nil
 }
 
-func GetEntropy(data string) (float64, error) {
-  //n := bicount[Key{"first", "second"}]
+func GetEntropy(data []string) (float64, error) {
+	n := len(data)
 
-  words := strings.Fields(data)  
-  
-  //n = lenth of the tokens (word count)
-  n := len(words)
-  
-  var total float64
-  total = 0.0
-  
-	for i, word := range words {
-    if i < len(words) - 1 {
-      total += getProbability(word, words[i + 1])
-    }
+	var total float64
+	total = 0.0
+
+	for i, word := range data {
+		if i < len(data)-1 {
+			total += getProbability(word, data[i+1])
+		}
 	}
-  
-  exponent := total * (float64(-1) / float64(n))
-  perplexity := math.Pow(250, exponent)
-  
-  return perplexity, nil
+
+	exponent := total * (float64(-1) / float64(n))
+	perplexity := math.Pow(250, exponent)
+
+	return perplexity, nil
 }
 
 func getProbability(first string, second string) float64 {
-  //check if word exists
-  if count[first] == 0 {
-    first = "<UKN>"
-  }
-  if count[second] == 0 {
-    second = "<UKN>"
-  }
-  return bigramModel[Key{first, second}]
+	//check if word exists
+	if count[first] == 0 {
+		first = "<UKN>"
+	}
+	if count[second] == 0 {
+		second = "<UKN>"
+	}
+	return bigramModel[Key{first, second}]
 }
 
 func buildModel() {
-  //use log base of 250
-  logBase := 1 / math.Log(250)
+	//use log base of 250
+	logBase := 1 / math.Log(250)
 
-  v := float64(len(count)) + laplace_alpha
+	v := float64(len(count)) + laplace_alpha
 
-  for key, value := range count {
-    denom := float64(value) + v
-    for key2, val2 := range bicount[key] {
-      bigramModel[Key{key, key2}] = (float64(val2) + laplace_alpha) / denom
+	for key, value := range count {
+		denom := float64(value) + v
+		for key2, val2 := range bicount[key] {
+			bigramModel[Key{key, key2}] = (float64(val2) + laplace_alpha) / denom
 
-      //trigram
-      for key3, val3 := range tricount[key][key2] {
-        trigramModel[TriKey{key, key2, key3}] = (float64(val3) + laplace_alpha) / denom
+			//trigram
+			for key3, val3 := range tricount[key][key2] {
+				trigramModel[TriKey{key, key2, key3}] = (float64(val3) + laplace_alpha) / denom
 
-        //quadgram
-        for key4, val4 := range quadcount[key][key2][key3] {
-          quadgramModel[QuadKey{key, key2, key3, key4}] = (float64(val4) + laplace_alpha) / denom
-        }
-        //unknown token
-        quadgramModel[QuadKey{key, key2, key3, "<UKN>"}] = math.Log(laplace_alpha / denom) * logBase
-      }
-      //unknown token
-      trigramModel[TriKey{key, key2, "<UKN>"}] = math.Log(laplace_alpha / denom) * logBase
-    }
-    //add unknown token
-    bigramModel[Key{key, "<UKN>"}] = math.Log(laplace_alpha / denom) * logBase
-    trigramModel[TriKey{key, "<UKN>", "<UKN>"}] = math.Log(laplace_alpha / denom) * logBase
-  } 
-  //handle unknown as first word. 
-  bigramModel[Key{"<UKN>", "<UKN>"}] = math.Log(laplace_alpha / (v + laplace_alpha)) * logBase
-  trigramModel[TriKey{"<UKN>", "<UKN>", "<UKN>"}] = math.Log(laplace_alpha / (v + laplace_alpha)) * logBase
+				//quadgram
+				for key4, val4 := range quadcount[key][key2][key3] {
+					quadgramModel[QuadKey{key, key2, key3, key4}] = (float64(val4) + laplace_alpha) / denom
+				}
+				//unknown token
+				quadgramModel[QuadKey{key, key2, key3, "<UKN>"}] = math.Log(laplace_alpha/denom) * logBase
+			}
+			//unknown token
+			trigramModel[TriKey{key, key2, "<UKN>"}] = math.Log(laplace_alpha/denom) * logBase
+		}
+		//add unknown token
+		bigramModel[Key{key, "<UKN>"}] = math.Log(laplace_alpha/denom) * logBase
+		trigramModel[TriKey{key, "<UKN>", "<UKN>"}] = math.Log(laplace_alpha/denom) * logBase
+	}
+	//handle unknown as first word.
+	bigramModel[Key{"<UKN>", "<UKN>"}] = math.Log(laplace_alpha/(v+laplace_alpha)) * logBase
+	trigramModel[TriKey{"<UKN>", "<UKN>", "<UKN>"}] = math.Log(laplace_alpha/(v+laplace_alpha)) * logBase
 }
