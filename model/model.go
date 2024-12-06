@@ -38,21 +38,27 @@ var quadcount map[string]map[string]map[string]map[string]int
 var laplace_alpha float64
 
 type Key struct {
-	first, second string
+	First  string `json:"first"`
+	Second string `json:"second"`
 }
 
 var bigramModel map[Key]float64
 
 // trigram
 type TriKey struct {
-	first, second, third string
+	First  string `json:"first"`
+	Second string `json:"second"`
+	Third  string `json:"thrid"`
 }
 
 var trigramModel map[TriKey]float64
 
 // quadgram
 type QuadKey struct {
-	first, second, third, fourth string
+	First  string `json:"first"`
+	Second string `json:"second"`
+	Third  string `json:"thrid"`
+	Fourth string `json:"fourth"`
 }
 
 var quadgramModel map[QuadKey]float64
