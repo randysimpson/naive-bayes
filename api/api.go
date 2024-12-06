@@ -1,6 +1,7 @@
-/*MIT License
+/*
+MIT License
 
-Copyright (©) 2019 - Randall Simpson
+# Copyright (©) 2024 - Randall Simpson
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -18,16 +19,23 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.*/
+SOFTWARE.
+*/
 package api
 
-import (
-  "net/http"
-  "k8s.io/klog"
-)
+import "github.com/gin-gonic/gin"
 
 func HandleRequests() {
-  router := NewRouter()
- 
-  klog.Fatal(http.ListenAndServe(":8080", router))
+	router := gin.Default()
+
+	router.GET("/", Index)
+	router.POST("/api/v1/build", BuildModel)
+	router.POST("/api/v1/entropy", TestEntropy)
+	router.GET("/api/v1/model", GetModel)
+	router.GET("/api/v1/predict/:first/:second/:third", QuadPredict)
+	router.GET("/api/v1/predict/:first/:second", TriPredict)
+	router.GET("/api/v1/predict/:first", Predict)
+	router.POST("/api/v1/clear", Clear)
+
+	router.Run("0.0.0.0:8080")
 }

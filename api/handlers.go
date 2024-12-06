@@ -24,191 +24,127 @@ SOFTWARE.
 package api
 
 import (
-	"encoding/json"
-	"fmt"
-	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
 
+	"github.com/gin-gonic/gin"
 	"github.com/randysimpson/naive-bayes/model"
 
-	"github.com/gorilla/mux"
 	"k8s.io/klog"
 )
 
-func Index(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "Welcome!")
+func Index(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"message": "Welcome!"})
 }
 
-func BuildModel(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
-	if err != nil {
+type buildReq struct {
+	Data   string   `json:"data,omitempty"`
+	Tokens []string `json:"tokens,omitempty"`
+}
+
+func BuildModel(c *gin.Context) {
+	var newBuildRequest buildReq
+	if err := c.BindJSON(&newBuildRequest); err != nil {
 		klog.Errorf("error: %+v", err)
+		return
 	}
-
-	if err := r.Body.Close(); err != nil {
-		klog.Errorln(err)
-	}
-
-	//convert json into map
-	var jsonBody interface{}
-	json.Unmarshal(body, &jsonBody)
-
-	m := jsonBody.(map[string]interface{})
 
 	totalCount := 0
-	s := m["data"].(string)
-	if len(s) > 0 {
-		count, err := model.AddData(strings.Fields(s))
+	if len(newBuildRequest.Data) > 0 {
+		count, err := model.AddData(strings.Fields(newBuildRequest.Data))
 		if err != nil {
 			klog.Errorf("error: %+v", err)
 		}
 		totalCount += count
 	}
-	tokens := m["tokens"].([]string)
-	if len(tokens) > 0 {
-		count, err := model.AddData(tokens)
+	if len(newBuildRequest.Tokens) > 0 {
+		count, err := model.AddData(newBuildRequest.Tokens)
 		if err != nil {
 			klog.Errorf("error: %+v", err)
 		}
 		totalCount += count
 	}
-
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusCreated)
 
 	t := map[string]interface{}{
 		"status": "Success",
 		"size":   totalCount,
 	}
-	if err := json.NewEncoder(w).Encode(t); err != nil {
-		klog.Errorln(err)
-	}
+	c.JSON(http.StatusCreated, t)
 }
 
-func TestEntropy(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1048576))
-	if err != nil {
+func TestEntropy(c *gin.Context) {
+	var newBuildRequest buildReq
+	if err := c.BindJSON(&newBuildRequest); err != nil {
 		klog.Errorf("error: %+v", err)
+		return
 	}
-
-	if err := r.Body.Close(); err != nil {
-		klog.Errorln(err)
-	}
-
-	//convert json into map
-	var jsonBody interface{}
-	json.Unmarshal(body, &jsonBody)
-
-	m := jsonBody.(map[string]interface{})
 
 	entropy := 0.0
-	s := m["data"].(string)
-	if len(s) > 0 {
-		e, err := model.GetEntropy(strings.Fields(s))
+	if len(newBuildRequest.Data) > 0 {
+		e, err := model.GetEntropy(strings.Fields(newBuildRequest.Data))
 		if err != nil {
 			klog.Errorf("error: %+v", err)
 		}
 		entropy = e
 	}
-	tokens := m["tokens"].([]string)
-	if len(tokens) > 0 {
-		e, err := model.GetEntropy(tokens)
+	if len(newBuildRequest.Tokens) > 0 {
+		e, err := model.GetEntropy(newBuildRequest.Tokens)
 		if err != nil {
 			klog.Errorf("error: %+v", err)
 		}
 		entropy = e
 	}
-
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
 
 	t := map[string]interface{}{
 		"entropy": entropy,
 	}
-	if err := json.NewEncoder(w).Encode(t); err != nil {
-		klog.Errorln(err)
-	}
+	c.JSON(http.StatusOK, t)
 }
 
-func GetModel(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
-
+func GetModel(c *gin.Context) {
 	t := model.GetModel()
-	if err := json.NewEncoder(w).Encode(t); err != nil {
-		klog.Errorln(err)
-	}
+	c.JSON(http.StatusOK, t)
 }
 
-func Predict(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	word := vars["word"]
-	options, err := model.GetNext(word)
+func Predict(c *gin.Context) {
+	first := c.Param("first")
+
+	options, err := model.GetNext(first)
 	if err != nil {
 		klog.Errorf("error: %+v", err)
 	}
 
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
-
-	enc := json.NewEncoder(w)
-	enc.SetEscapeHTML(false)
-	if err := enc.Encode(options); err != nil {
-		klog.Errorln(err)
-	}
+	c.JSON(http.StatusOK, options)
 }
 
-func TriPredict(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	first := vars["first"]
-	second := vars["second"]
+func TriPredict(c *gin.Context) {
+	first := c.Param("first")
+	second := c.Param("second")
 	options, err := model.GetTriNext(first, second)
 	if err != nil {
 		klog.Errorf("error: %+v", err)
 	}
 
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
-
-	enc := json.NewEncoder(w)
-	enc.SetEscapeHTML(false)
-	if err := enc.Encode(options); err != nil {
-		klog.Errorln(err)
-	}
+	c.JSON(http.StatusOK, options)
 }
 
-func QuadPredict(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	first := vars["first"]
-	second := vars["second"]
-	third := vars["third"]
+func QuadPredict(c *gin.Context) {
+	first := c.Param("first")
+	second := c.Param("second")
+	third := c.Param("third")
 	options, err := model.GetQuadNext(first, second, third)
 	if err != nil {
 		klog.Errorf("error: %+v", err)
 	}
 
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
-
-	enc := json.NewEncoder(w)
-	enc.SetEscapeHTML(false)
-	if err := enc.Encode(options); err != nil {
-		klog.Errorln(err)
-	}
+	c.JSON(http.StatusOK, options)
 }
 
-func Clear(w http.ResponseWriter, r *http.Request) {
+func Clear(c *gin.Context) {
 	model.ClearModel()
-
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
 
 	t := map[string]interface{}{
 		"status": "clear",
 	}
-	if err := json.NewEncoder(w).Encode(t); err != nil {
-		klog.Errorln(err)
-	}
+	c.JSON(http.StatusOK, t)
 }

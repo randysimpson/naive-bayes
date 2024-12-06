@@ -1,4 +1,4 @@
-FROM golang:1.17 as builder
+FROM golang:1.21 as builder
 WORKDIR /usr/local/go/src
 RUN mkdir naive-bayes
 WORKDIR /usr/local/go/src/naive-bayes
